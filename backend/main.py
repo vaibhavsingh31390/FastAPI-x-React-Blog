@@ -1,8 +1,7 @@
-from fastapi import FastAPI
-from core.config import settings
-
-app = FastAPI(title=settings.PROJECT_NAME, version=settings.PROJECT_VERSION)
+import fastapi
+from core.config import Settings
+app = fastapi.FastAPI(title=Settings.PROJECT_NAME, version=Settings.PROJECT_VERSION)
 
 @app.get("/")
 def read_root():
-    return {"message": "Hello, World!"}
+    return {"message": f"Hello, Fucking World!"}
