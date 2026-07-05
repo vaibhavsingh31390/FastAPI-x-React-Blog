@@ -4,8 +4,8 @@ pydantic[email]
 pytest
 httpx
 sqlalchemy
-asyncio
 psycopg2-binary
 python-dotenv
 alembic
 pwdlib[argon2]
+python-slugify

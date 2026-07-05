@@ -1,0 +1,588 @@
+{
+  "info": {
+    "_postman_id": "7e8f8a3e-6cdb-4bc0-ae7c-4cc8d83d6a2d",
+    "name": "FastAPI x React Blog API",
+    "description": "Postman collection for the current FastAPI backend. Assumptions baked into the variables: user id 1 already exists and is a regular user, user id 2 already exists and is an admin. Categories and tags are implemented as separate taxonomy resources, which is the cleaner and more standard fit for this codebase.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    },
+    {
+      "key": "apiPrefix",
+      "value": "api/v1",
+      "type": "string"
+    },
+    {
+      "key": "regularUserId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "adminUserId",
+      "value": "2",
+      "type": "string"
+    },
+    {
+      "key": "createdUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "postId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "postSlug",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "categoryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "categorySlug",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tagId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tagSlug",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Root",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.id) {",
+                  "  pm.collectionVariables.set('createdUserId', String(data.id));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"postman-user-{{$timestamp}}@example.com\",\n  \"password\": \"password123\",\n  \"first_name\": \"Postman\",\n  \"last_name\": \"User\",\n  \"display_name\": \"Postman User\",\n  \"bio\": \"Created from the Postman collection.\",\n  \"avatar_url\": \"https://example.com/avatars/postman-user.png\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/{{apiPrefix}}/users/"
+          },
+          "response": []
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/users/?skip=0&limit=100&sort=desc"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User 1",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/users/{{regularUserId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User 1 Public Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/users/{{regularUserId}}/public"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User 1 Posts",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/users/{{regularUserId}}/posts"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User 1 Comments",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/users/{{regularUserId}}/comments"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User 1 Detail",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/users/{{regularUserId}}/detail"
+          },
+          "response": []
+        },
+        {
+          "name": "Update User 1",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"display_name\": \"User One Updated\",\n  \"bio\": \"Updated from the Postman collection.\",\n  \"avatar_url\": \"https://example.com/avatars/user-one-updated.png\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/{{apiPrefix}}/users/{{regularUserId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Update User 1 Flags",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_active\": true,\n  \"is_admin\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/{{apiPrefix}}/users/{{regularUserId}}/admin"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Created User",
+          "request": {
+            "method": "DELETE",
+            "description": "Run Register User first so `createdUserId` is populated, or set it manually before sending this request.",
+            "url": "{{baseUrl}}/{{apiPrefix}}/users/{{createdUserId}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Posts",
+      "item": [
+        {
+          "name": "List Posts",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/posts/?skip=0&limit=100&sort=desc"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Post By ID",
+          "request": {
+            "method": "GET",
+            "description": "Create a post first if `postId` is empty.",
+            "url": "{{baseUrl}}/{{apiPrefix}}/posts/{{postId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Post Detail By ID",
+          "request": {
+            "method": "GET",
+            "description": "Create a post first if `postId` is empty.",
+            "url": "{{baseUrl}}/{{apiPrefix}}/posts/{{postId}}/detail"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Post By Slug",
+          "request": {
+            "method": "GET",
+            "description": "Create a post first if `postSlug` is empty.",
+            "url": "{{baseUrl}}/{{apiPrefix}}/posts/slug/{{postSlug}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Post Detail By Slug",
+          "request": {
+            "method": "GET",
+            "description": "Create a post first if `postSlug` is empty.",
+            "url": "{{baseUrl}}/{{apiPrefix}}/posts/slug/{{postSlug}}/detail"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Post As User 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.id) {",
+                  "  pm.collectionVariables.set('postId', String(data.id));",
+                  "}",
+                  "if (data.slug) {",
+                  "  pm.collectionVariables.set('postSlug', data.slug);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"post-{{$timestamp}}\",\n  \"title\": \"Hello From Postman\",\n  \"excerpt\": \"Created from the Postman collection.\",\n  \"content\": \"This is a sample blog post body created from the Postman collection.\",\n  \"cover_image_url\": \"https://example.com/covers/postman-cover.jpg\",\n  \"status\": \"draft\",\n  \"published_at\": null,\n  \"category_id\": null,\n  \"tag_ids\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/{{apiPrefix}}/posts/?author_id={{regularUserId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Post",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Hello From Postman (Updated)\",\n  \"excerpt\": \"Updated from the Postman collection.\",\n  \"content\": \"Updated blog post content from Postman.\",\n  \"status\": \"published\",\n  \"published_at\": \"2026-07-06T12:00:00Z\",\n  \"tag_ids\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/{{apiPrefix}}/posts/{{postId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Post",
+          "request": {
+            "method": "DELETE",
+            "description": "Uses `postId`. Create a post first if you want a safe disposable target for this request.",
+            "url": "{{baseUrl}}/{{apiPrefix}}/posts/{{postId}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "Create Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.id) {",
+                  "  pm.collectionVariables.set('categoryId', String(data.id));",
+                  "}",
+                  "if (data.slug) {",
+                  "  pm.collectionVariables.set('categorySlug', data.slug);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"category-{{$timestamp}}\",\n  \"name\": \"Postman Category\",\n  \"description\": \"Category created from the Postman collection.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/{{apiPrefix}}/categories/"
+          },
+          "response": []
+        },
+        {
+          "name": "List Categories",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/categories/?skip=0&limit=100&sort=desc"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category By ID",
+          "request": {
+            "method": "GET",
+            "description": "Create a category first if `categoryId` is empty.",
+            "url": "{{baseUrl}}/{{apiPrefix}}/categories/{{categoryId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category By Slug",
+          "request": {
+            "method": "GET",
+            "description": "Create a category first if `categorySlug` is empty.",
+            "url": "{{baseUrl}}/{{apiPrefix}}/categories/slug/{{categorySlug}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category With Posts By ID",
+          "request": {
+            "method": "GET",
+            "description": "Create a category first if `categoryId` is empty.",
+            "url": "{{baseUrl}}/{{apiPrefix}}/categories/{{categoryId}}/posts"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category With Posts By Slug",
+          "request": {
+            "method": "GET",
+            "description": "Create a category first if `categorySlug` is empty.",
+            "url": "{{baseUrl}}/{{apiPrefix}}/categories/slug/{{categorySlug}}/posts"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Category Updated\",\n  \"description\": \"Updated category description from Postman.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/{{apiPrefix}}/categories/{{categoryId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Category",
+          "request": {
+            "method": "DELETE",
+            "description": "Create a category first if `categoryId` is empty.",
+            "url": "{{baseUrl}}/{{apiPrefix}}/categories/{{categoryId}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tags",
+      "item": [
+        {
+          "name": "Create Tag",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.id) {",
+                  "  pm.collectionVariables.set('tagId', String(data.id));",
+                  "}",
+                  "if (data.slug) {",
+                  "  pm.collectionVariables.set('tagSlug', data.slug);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"tag-{{$timestamp}}\",\n  \"name\": \"postman-tag\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/{{apiPrefix}}/tags/"
+          },
+          "response": []
+        },
+        {
+          "name": "List Tags",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/tags/?skip=0&limit=100&sort=desc"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Tag By ID",
+          "request": {
+            "method": "GET",
+            "description": "Create a tag first if `tagId` is empty.",
+            "url": "{{baseUrl}}/{{apiPrefix}}/tags/{{tagId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Tag By Slug",
+          "request": {
+            "method": "GET",
+            "description": "Create a tag first if `tagSlug` is empty.",
+            "url": "{{baseUrl}}/{{apiPrefix}}/tags/slug/{{tagSlug}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Tag With Posts By ID",
+          "request": {
+            "method": "GET",
+            "description": "Create a tag first if `tagId` is empty.",
+            "url": "{{baseUrl}}/{{apiPrefix}}/tags/{{tagId}}/posts"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Tag With Posts By Slug",
+          "request": {
+            "method": "GET",
+            "description": "Create a tag first if `tagSlug` is empty.",
+            "url": "{{baseUrl}}/{{apiPrefix}}/tags/slug/{{tagSlug}}/posts"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Tag",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"postman-tag-updated\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/{{apiPrefix}}/tags/{{tagId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Tag",
+          "request": {
+            "method": "DELETE",
+            "description": "Create a tag first if `tagId` is empty.",
+            "url": "{{baseUrl}}/{{apiPrefix}}/tags/{{tagId}}"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

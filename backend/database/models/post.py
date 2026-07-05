@@ -1,10 +1,18 @@
 import enum
-from datetime import datetime
 from sqlalchemy import (
-    Column, Integer, String, Text, DateTime, Enum, ForeignKey, Index, Table,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Table,
+    Text,
 )
 from sqlalchemy.orm import relationship
-from db.base import Base
+
+from config.main_db import Base, utc_now
 
 
 class PostStatus(str, enum.Enum):
@@ -24,18 +32,20 @@ post_tags = Table(
 
 class Post(Base):
     __tablename__ = "posts"
-    id = Column(Integer, primary_key=True, index=True)
+
+    id = Column(Integer, primary_key=True)
     author_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)
     category_id = Column(Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True)
-    slug = Column(String, nullable=False, unique=True, index=True)
-    title = Column(String, nullable=False)
-    excerpt = Column(Text, nullable=True)          # teaser / meta description
-    content = Column(Text, nullable=False)         # markdown or html body
-    cover_image_url = Column(String, nullable=True)
-    status = Column(Enum(PostStatus), nullable=False, default=PostStatus.draft)
-    published_at = Column(DateTime, nullable=True)  # set when published
-    created_at = Column(DateTime, nullable=False, default=datetime.now)
-    updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
+    slug = Column(String(100), nullable=False, unique=True)
+    title = Column(String(100), nullable=False)
+    excerpt = Column(String(500), nullable=True)
+    content = Column(Text, nullable=False)
+    cover_image_url = Column(String(255), nullable=True)
+    status = Column(Enum(PostStatus, name="poststatus"), nullable=False, default=PostStatus.draft)
+    published_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
+    deleted_at = Column(DateTime(timezone=True), nullable=True, default=None)
     author = relationship("User", back_populates="posts")
     category = relationship("Category", back_populates="posts")
     tags = relationship("Tag", secondary=post_tags, back_populates="posts")
