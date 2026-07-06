@@ -1,10 +1,11 @@
 from fastapi import APIRouter
 
-from api.v1.endpoints import category, post, tag, user
+from api.v1.endpoints import admin, protected, public
 
 api_v1_router = APIRouter()
 
-api_v1_router.include_router(user.router)
-api_v1_router.include_router(post.router)
-api_v1_router.include_router(category.router)
-api_v1_router.include_router(tag.router)
+for router in public.routers:
+    api_v1_router.include_router(router)
+
+protected.include_routers(api_v1_router)
+admin.include_routers(api_v1_router)

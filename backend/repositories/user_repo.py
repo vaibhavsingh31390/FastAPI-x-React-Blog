@@ -34,6 +34,10 @@ def get_by_email(db: Session, email: str) -> User | None:
     return db.query(User).filter(User.email == email).first()
 
 
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return password_hasher.verify(plain_password, hashed_password)
+
+
 def create(db: Session, user_in: UserCreate) -> User:
     db_user = User(
         email=user_in.email,

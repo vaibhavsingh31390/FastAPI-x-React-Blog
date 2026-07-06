@@ -1,12 +1,11 @@
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from config.main_db import get_db
-from database.schema.tags import TagCreate, TagSchema, TagUpdate, TagWithPostsSchema
+from database.schema.tags import TagSchema, TagWithPostsSchema
 from services import tag_service
-
 
 router = APIRouter(prefix="/tags", tags=["tags"])
 
@@ -39,28 +38,3 @@ def get_tag_with_posts(tag_id: int, db: Session = Depends(get_db)):
 @router.get("/slug/{slug}/posts", response_model=TagWithPostsSchema)
 def get_tag_with_posts_by_slug(slug: str, db: Session = Depends(get_db)):
     return tag_service.get_tag_with_posts_by_slug(db, slug)
-
-
-# TODO: Protect this route with admin/editor auth middleware before
-# allowing tag creation.
-@router.post("/", response_model=TagSchema, status_code=status.HTTP_201_CREATED)
-def create_tag(payload: TagCreate, db: Session = Depends(get_db)):
-    return tag_service.create_tag(db, payload)
-
-
-# TODO: Protect this route with admin/editor auth middleware before
-# allowing tag updates.
-@router.patch("/{tag_id}", response_model=TagSchema)
-def update_tag(
-    tag_id: int,
-    payload: TagUpdate,
-    db: Session = Depends(get_db),
-):
-    return tag_service.update_tag(db, tag_id, payload)
-
-
-# TODO: Protect this route with admin/editor auth middleware before
-# allowing tag deletion.
-@router.delete("/{tag_id}", response_model=TagSchema)
-def delete_tag(tag_id: int, db: Session = Depends(get_db)):
-    return tag_service.delete_tag(db, tag_id)

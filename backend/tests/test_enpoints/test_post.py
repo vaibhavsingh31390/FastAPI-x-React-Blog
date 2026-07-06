@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from tests.test_enpoints.test_user import create_user
+from tests.test_enpoints.test_user import create_user, register_auth
 
 
 def make_post_payload(user_id: int, index: int = 1) -> dict:
@@ -18,18 +18,29 @@ def make_post_payload(user_id: int, index: int = 1) -> dict:
     }
 
 
-def create_post(client: TestClient, user_id: int, index: int = 1) -> dict:
-    response = client.post("/api/v1/posts/", json=make_post_payload(user_id, index))
+def create_post(
+    client: TestClient,
+    user_id: int,
+    index: int = 1,
+    *,
+    headers: dict[str, str],
+) -> dict:
+    response = client.post(
+        "/api/v1/posts/",
+        json=make_post_payload(user_id, index),
+        headers=headers,
+    )
     assert response.status_code == 201
     return response.json()
 
 
 def test_create_post(client: TestClient):
-    user = create_user(client, 1)
+    user, headers = register_auth(client, 1)
 
     response = client.post(
         "/api/v1/posts/",
         json=make_post_payload(user_id=user["id"], index=1),
+        headers=headers,
     )
 
     assert response.status_code == 201
@@ -37,20 +48,20 @@ def test_create_post(client: TestClient):
 
 
 def test_create_post_without_slug_uses_title(client: TestClient):
-    user = create_user(client, 1)
+    user, headers = register_auth(client, 1)
     payload = make_post_payload(user_id=user["id"], index=1)
     payload.pop("slug")
 
-    response = client.post("/api/v1/posts/", json=payload)
+    response = client.post("/api/v1/posts/", json=payload, headers=headers)
 
     assert response.status_code == 201
     assert response.json()["slug"] == "test-post-1"
 
 
 def test_list_posts(client: TestClient):
-    user = create_user(client, 1)
-    create_post(client, user["id"], 1)
-    create_post(client, user["id"], 2)
+    user, headers = register_auth(client, 1)
+    create_post(client, user["id"], 1, headers=headers)
+    create_post(client, user["id"], 2, headers=headers)
 
     response = client.get("/api/v1/posts/?skip=0&limit=100&sort=desc")
 
@@ -59,8 +70,8 @@ def test_list_posts(client: TestClient):
 
 
 def test_get_post(client: TestClient):
-    user = create_user(client, 1)
-    post = create_post(client, user["id"], 1)
+    user, headers = register_auth(client, 1)
+    post = create_post(client, user["id"], 1, headers=headers)
 
     response = client.get(f"/api/v1/posts/{post['id']}")
 
@@ -69,8 +80,8 @@ def test_get_post(client: TestClient):
 
 
 def test_get_post_detail(client: TestClient):
-    user = create_user(client, 1)
-    post = create_post(client, user["id"], 1)
+    user, headers = register_auth(client, 1)
+    post = create_post(client, user["id"], 1, headers=headers)
 
     response = client.get(f"/api/v1/posts/{post['id']}/detail")
 
@@ -81,8 +92,8 @@ def test_get_post_detail(client: TestClient):
 
 
 def test_get_post_by_slug(client: TestClient):
-    user = create_user(client, 1)
-    post = create_post(client, user["id"], 1)
+    user, headers = register_auth(client, 1)
+    post = create_post(client, user["id"], 1, headers=headers)
 
     response = client.get(f"/api/v1/posts/slug/{post['slug']}")
 
@@ -91,8 +102,8 @@ def test_get_post_by_slug(client: TestClient):
 
 
 def test_get_post_detail_by_slug(client: TestClient):
-    user = create_user(client, 1)
-    post = create_post(client, user["id"], 1)
+    user, headers = register_auth(client, 1)
+    post = create_post(client, user["id"], 1, headers=headers)
 
     response = client.get(f"/api/v1/posts/slug/{post['slug']}/detail")
 
@@ -102,24 +113,31 @@ def test_get_post_detail_by_slug(client: TestClient):
 
 
 def test_update_post(client: TestClient):
-    user = create_user(client, 1)
-    post = create_post(client, user["id"], 1)
+    user, headers = register_auth(client, 1)
+    post = create_post(client, user["id"], 1, headers=headers)
     payload = {
         "title": "Updated Post Title",
         "status": "published",
     }
 
-    response = client.patch(f"/api/v1/posts/{post['id']}", json=payload)
+    response = client.patch(
+        f"/api/v1/posts/{post['id']}",
+        json=payload,
+        headers=headers,
+    )
 
     assert response.status_code == 200
     assert response.json()["title"] == payload["title"]
 
 
 def test_delete_post(client: TestClient):
-    user = create_user(client, 1)
-    post = create_post(client, user["id"], 1)
+    user, headers = register_auth(client, 1)
+    post = create_post(client, user["id"], 1, headers=headers)
 
-    delete_response = client.delete(f"/api/v1/posts/{post['id']}")
+    delete_response = client.delete(
+        f"/api/v1/posts/{post['id']}",
+        headers=headers,
+    )
     get_response = client.get(f"/api/v1/posts/{post['id']}")
 
     assert delete_response.status_code == 200

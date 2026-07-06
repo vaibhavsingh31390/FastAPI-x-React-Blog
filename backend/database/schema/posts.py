@@ -15,15 +15,26 @@ class PostBase(BaseModel):
     status: PostStatus = PostStatus.draft
     published_at: datetime | None = None
     # TODO: category_id should be validated and authorized before persisting.
-    category_id: int | None = Field(default=None, gt=0)
+    category_id: int | None = Field(
+        default=None,
+        gt=0,
+        description="Should be validated and authorized before persisting.",
+    )
 
 
 class PostCreate(PostBase):
     slug: str | None = Field(default=None, min_length=1, max_length=100)
     # TODO: author_id should be added via auth middleware in the future.
-    author_id: int = Field(..., gt=0, description="Should be added via auth middleware.")
+    author_id: int = Field(
+        ...,
+        gt=0,
+        description="Should be added via auth middleware.",
+    )
     # TODO: tag_ids should be validated and authorized before persisting.
-    tag_ids: list[int] = Field(default_factory=list)
+    tag_ids: list[int] = Field(
+        default_factory=list,
+        description="Should be validated and authorized before persisting.",
+    )
 
 
 class PostUpdate(BaseModel):
@@ -35,9 +46,16 @@ class PostUpdate(BaseModel):
     status: PostStatus | None = None
     published_at: datetime | None = None
     # TODO: category_id should be validated and authorized before persisting.
-    category_id: int | None = Field(default=None, gt=0)
+    category_id: int | None = Field(
+        default=None,
+        gt=0,
+        description="Should be validated and authorized before persisting.",
+    )
     # TODO: tag_ids should be validated and authorized before persisting.
-    tag_ids: list[int] | None = None
+    tag_ids: list[int] | None = Field(
+        default=None,
+        description="Should be validated and authorized before persisting.",
+    )
 
 
 class PostSchema(PostBase):

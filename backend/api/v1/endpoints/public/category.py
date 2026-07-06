@@ -1,17 +1,11 @@
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from config.main_db import get_db
-from database.schema.category import (
-    CategoryCreate,
-    CategorySchema,
-    CategoryUpdate,
-    CategoryWithPostsSchema,
-)
+from database.schema.category import CategorySchema, CategoryWithPostsSchema
 from services import category_service
-
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
@@ -44,28 +38,3 @@ def get_category_with_posts(category_id: int, db: Session = Depends(get_db)):
 @router.get("/slug/{slug}/posts", response_model=CategoryWithPostsSchema)
 def get_category_with_posts_by_slug(slug: str, db: Session = Depends(get_db)):
     return category_service.get_category_with_posts_by_slug(db, slug)
-
-
-# TODO: Protect this route with admin/editor auth middleware before
-# allowing category creation.
-@router.post("/", response_model=CategorySchema, status_code=status.HTTP_201_CREATED)
-def create_category(payload: CategoryCreate, db: Session = Depends(get_db)):
-    return category_service.create_category(db, payload)
-
-
-# TODO: Protect this route with admin/editor auth middleware before
-# allowing category updates.
-@router.patch("/{category_id}", response_model=CategorySchema)
-def update_category(
-    category_id: int,
-    payload: CategoryUpdate,
-    db: Session = Depends(get_db),
-):
-    return category_service.update_category(db, category_id, payload)
-
-
-# TODO: Protect this route with admin/editor auth middleware before
-# allowing category deletion.
-@router.delete("/{category_id}", response_model=CategorySchema)
-def delete_category(category_id: int, db: Session = Depends(get_db)):
-    return category_service.delete_category(db, category_id)

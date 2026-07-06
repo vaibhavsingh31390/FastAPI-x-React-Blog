@@ -1,7 +1,8 @@
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 from tests.test_enpoints.test_post import make_post_payload
-from tests.test_enpoints.test_user import create_user
+from tests.test_enpoints.test_user import promote_admin, register_auth
 
 
 def make_category_payload(index: int = 1) -> dict:
@@ -12,8 +13,17 @@ def make_category_payload(index: int = 1) -> dict:
     }
 
 
-def create_category(client: TestClient, index: int = 1) -> dict:
-    response = client.post("/api/v1/categories/", json=make_category_payload(index))
+def create_category(
+    client: TestClient,
+    index: int = 1,
+    *,
+    headers: dict[str, str],
+) -> dict:
+    response = client.post(
+        "/api/v1/categories/",
+        json=make_category_payload(index),
+        headers=headers,
+    )
     assert response.status_code == 201
     return response.json()
 
@@ -23,36 +33,47 @@ def create_post_for_category(
     user_id: int,
     category_id: int,
     index: int = 1,
+    *,
+    headers: dict[str, str],
 ) -> dict:
     payload = make_post_payload(user_id=user_id, index=index)
     payload["category_id"] = category_id
-    response = client.post("/api/v1/posts/", json=payload)
+    response = client.post("/api/v1/posts/", json=payload, headers=headers)
     assert response.status_code == 201
     return response.json()
 
 
-def test_create_category(client: TestClient):
+def admin_auth(client: TestClient, db_session: Session, index: int = 1):
+    user, headers = register_auth(client, index)
+    promote_admin(db_session, user["id"])
+    return user, headers
+
+
+def test_create_category(client: TestClient, db_session: Session):
+    _, headers = admin_auth(client, db_session, 1)
     payload = make_category_payload()
 
-    response = client.post("/api/v1/categories/", json=payload)
+    response = client.post("/api/v1/categories/", json=payload, headers=headers)
 
     assert response.status_code == 201
     assert response.json()["name"] == payload["name"]
 
 
-def test_create_category_without_slug_uses_name(client: TestClient):
+def test_create_category_without_slug_uses_name(client: TestClient, db_session: Session):
+    _, headers = admin_auth(client, db_session, 1)
     payload = make_category_payload()
     payload.pop("slug")
 
-    response = client.post("/api/v1/categories/", json=payload)
+    response = client.post("/api/v1/categories/", json=payload, headers=headers)
 
     assert response.status_code == 201
     assert response.json()["slug"] == "category-test-1"
 
 
-def test_list_categories(client: TestClient):
-    create_category(client, 1)
-    create_category(client, 2)
+def test_list_categories(client: TestClient, db_session: Session):
+    _, headers = admin_auth(client, db_session, 1)
+    create_category(client, 1, headers=headers)
+    create_category(client, 2, headers=headers)
 
     response = client.get("/api/v1/categories/?skip=0&limit=100&sort=desc")
 
@@ -60,8 +81,9 @@ def test_list_categories(client: TestClient):
     assert len(response.json()) == 2
 
 
-def test_get_category(client: TestClient):
-    category = create_category(client, 1)
+def test_get_category(client: TestClient, db_session: Session):
+    _, headers = admin_auth(client, db_session, 1)
+    category = create_category(client, 1, headers=headers)
 
     response = client.get(f"/api/v1/categories/{category['id']}")
 
@@ -69,8 +91,9 @@ def test_get_category(client: TestClient):
     assert response.json()["id"] == category["id"]
 
 
-def test_get_category_by_slug(client: TestClient):
-    category = create_category(client, 1)
+def test_get_category_by_slug(client: TestClient, db_session: Session):
+    _, headers = admin_auth(client, db_session, 1)
+    category = create_category(client, 1, headers=headers)
 
     response = client.get(f"/api/v1/categories/slug/{category['slug']}")
 
@@ -78,10 +101,17 @@ def test_get_category_by_slug(client: TestClient):
     assert response.json()["slug"] == category["slug"]
 
 
-def test_get_category_with_posts(client: TestClient):
-    user = create_user(client, 1)
-    category = create_category(client, 1)
-    post = create_post_for_category(client, user["id"], category["id"], 1)
+def test_get_category_with_posts(client: TestClient, db_session: Session):
+    user, user_headers = register_auth(client, 1)
+    _, admin_headers = admin_auth(client, db_session, 2)
+    category = create_category(client, 1, headers=admin_headers)
+    post = create_post_for_category(
+        client,
+        user["id"],
+        category["id"],
+        1,
+        headers=user_headers,
+    )
 
     response = client.get(f"/api/v1/categories/{category['id']}/posts")
 
@@ -91,10 +121,17 @@ def test_get_category_with_posts(client: TestClient):
     assert response.json()["posts"][0]["id"] == post["id"]
 
 
-def test_get_category_with_posts_by_slug(client: TestClient):
-    user = create_user(client, 1)
-    category = create_category(client, 1)
-    post = create_post_for_category(client, user["id"], category["id"], 1)
+def test_get_category_with_posts_by_slug(client: TestClient, db_session: Session):
+    user, user_headers = register_auth(client, 1)
+    _, admin_headers = admin_auth(client, db_session, 2)
+    category = create_category(client, 1, headers=admin_headers)
+    post = create_post_for_category(
+        client,
+        user["id"],
+        category["id"],
+        1,
+        headers=user_headers,
+    )
 
     response = client.get(f"/api/v1/categories/slug/{category['slug']}/posts")
 
@@ -104,23 +141,32 @@ def test_get_category_with_posts_by_slug(client: TestClient):
     assert response.json()["posts"][0]["id"] == post["id"]
 
 
-def test_update_category(client: TestClient):
-    category = create_category(client, 1)
+def test_update_category(client: TestClient, db_session: Session):
+    _, headers = admin_auth(client, db_session, 1)
+    category = create_category(client, 1, headers=headers)
     payload = {
         "name": "Updated Category Name",
         "description": "Updated from tests.",
     }
 
-    response = client.patch(f"/api/v1/categories/{category['id']}", json=payload)
+    response = client.patch(
+        f"/api/v1/categories/{category['id']}",
+        json=payload,
+        headers=headers,
+    )
 
     assert response.status_code == 200
     assert response.json()["name"] == payload["name"]
 
 
-def test_delete_category(client: TestClient):
-    category = create_category(client, 1)
+def test_delete_category(client: TestClient, db_session: Session):
+    _, headers = admin_auth(client, db_session, 1)
+    category = create_category(client, 1, headers=headers)
 
-    delete_response = client.delete(f"/api/v1/categories/{category['id']}")
+    delete_response = client.delete(
+        f"/api/v1/categories/{category['id']}",
+        headers=headers,
+    )
     get_response = client.get(f"/api/v1/categories/{category['id']}")
 
     assert delete_response.status_code == 200
