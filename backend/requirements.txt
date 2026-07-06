@@ -1,2 +1,11 @@
-fastapi==0.136.3
-uvicorn==0.48.0
+fastapi
+uvicorn
+pydantic[email]
+pytest
+httpx2
+sqlalchemy
+psycopg2-binary
+python-dotenv
+alembic
+pwdlib[argon2]
+python-slugify

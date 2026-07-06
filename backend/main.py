@@ -1,7 +1,10 @@
-from fastapi import FastAPI
-from core.config import settings
+import fastapi
+from config.main_settings import SETTINGS
+from api.v1.router import api_v1_router
 
-app = FastAPI(title=settings.PROJECT_NAME, version=settings.PROJECT_VERSION)
+app = fastapi.FastAPI(title=SETTINGS.PROJECT_NAME, version=SETTINGS.PROJECT_VERSION)
+app.include_router(api_v1_router, prefix="/api/v1")
+
 
 @app.get("/")
 def read_root():
