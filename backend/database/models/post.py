@@ -29,7 +29,7 @@ class PostType(str, enum.Enum):
 class ContentMode(str, enum.Enum):
     markdown = "markdown"
     html = "html"
-    blocks = "blocks"
+    components = "components"
 
 
 # Pivot table for posts <-> tags. Defined here; tag model imports it.

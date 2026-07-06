@@ -3,18 +3,17 @@ from typing import Literal
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from config.main_settings import SETTINGS
 from database.models.post import ContentMode, Post
-from database.schema.content_blocks import parse_blocks_content
+from database.schema.content_components import parse_components_content
 from database.schema.posts import PostCreate, PostDetailSchema, PostUpdate
 from repositories import category_repo, post_repo, tag_repo, user_repo
 from utils.content_renderer import render_post_content
 from utils.slug_utils import normalize_slug
 
 
-def _validate_blocks_content(content: str) -> None:
+def _validate_components_content(content: str) -> None:
     try:
-        parse_blocks_content(content)
+        parse_components_content(content)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -22,21 +21,12 @@ def _validate_blocks_content(content: str) -> None:
         ) from exc
 
 
-def _render_content(content_mode: ContentMode, content: str) -> str:
+def _render_content(content_mode: ContentMode, content: str) -> str | None:
     try:
-        return render_post_content(
-            content_mode,
-            content,
-            use_node_ssr=SETTINGS.USE_NODE_SSR,
-        )
+        return render_post_content(content_mode, content)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
-    except RuntimeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(exc),
         ) from exc
 
@@ -76,18 +66,24 @@ def _validate_post_relations(
         )
 
 
-def list_posts(
+def list_published_posts(
     db: Session,
     skip: int = 0,
     limit: int = 100,
     *,
     sort: Literal["asc", "desc"] = "desc",
 ) -> list[Post]:
-    return post_repo.get_all_with_author(db, skip=skip, limit=limit, sort=sort)
+    return post_repo.get_all_with_author(
+        db,
+        skip=skip,
+        limit=limit,
+        sort=sort,
+        published_only=True,
+    )
 
 
-def get_post(db: Session, post_id: int) -> Post:
-    post = post_repo.get_by_id_with_author(db, post_id)
+def get_published_post(db: Session, post_id: int) -> Post:
+    post = post_repo.get_by_id_with_author(db, post_id, published_only=True)
     if post is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -96,8 +92,8 @@ def get_post(db: Session, post_id: int) -> Post:
     return post
 
 
-def get_post_by_slug(db: Session, slug: str) -> Post:
-    post = post_repo.get_by_slug_with_author(db, slug)
+def get_published_post_by_slug(db: Session, slug: str) -> Post:
+    post = post_repo.get_by_slug_with_author(db, slug, published_only=True)
     if post is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -106,8 +102,13 @@ def get_post_by_slug(db: Session, slug: str) -> Post:
     return post
 
 
-def get_post_detail(db: Session, post_id: int) -> PostDetailSchema:
-    post = post_repo.get_by_id_with_detail(db, post_id)
+def get_published_post_detail(db: Session, post_id: int) -> PostDetailSchema:
+    post = post_repo.get_by_id_with_detail(
+        db,
+        post_id,
+        published_only=True,
+        approved_comments_only=True,
+    )
     if post is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -116,8 +117,13 @@ def get_post_detail(db: Session, post_id: int) -> PostDetailSchema:
     return PostDetailSchema.model_validate(post)
 
 
-def get_post_detail_by_slug(db: Session, slug: str) -> PostDetailSchema:
-    post = post_repo.get_by_slug_with_detail(db, slug)
+def get_published_post_detail_by_slug(db: Session, slug: str) -> PostDetailSchema:
+    post = post_repo.get_by_slug_with_detail(
+        db,
+        slug,
+        published_only=True,
+        approved_comments_only=True,
+    )
     if post is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -197,18 +203,21 @@ def update_post(db: Session, post_id: int, payload: PostUpdate) -> Post:
         else db_post.content
     )
 
-    if update_payload.content is not None and effective_mode == ContentMode.blocks:
-        _validate_blocks_content(update_payload.content)
+    if update_payload.content is not None and effective_mode == ContentMode.components:
+        _validate_components_content(update_payload.content)
 
     rendered_content = None
+    update_rendered_content = False
     if update_payload.content is not None or update_payload.content_mode is not None:
         rendered_content = _render_content(effective_mode, effective_content)
+        update_rendered_content = True
 
     return post_repo.update(
         db,
         db_post,
         update_payload,
         rendered_content=rendered_content,
+        update_rendered_content=update_rendered_content,
     )
 
 

@@ -3,10 +3,19 @@ from typing import Literal
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from database.models.post import PostStatus
 from database.models.tag import Tag
 from database.schema.tags import TagCreate, TagUpdate, TagWithPostsSchema
 from repositories import tag_repo
 from utils.slug_utils import normalize_slug
+
+
+def _filter_published_posts(tag: Tag) -> None:
+    tag.posts = [
+        post
+        for post in tag.posts
+        if post.deleted_at is None and post.status == PostStatus.published
+    ]
 
 
 def _get_tag_or_404(db: Session, tag_id: int) -> Tag:
@@ -50,6 +59,7 @@ def get_tag_with_posts(db: Session, tag_id: int) -> TagWithPostsSchema:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Tag not found",
         )
+    _filter_published_posts(tag)
     return TagWithPostsSchema.model_validate(tag)
 
 
@@ -60,6 +70,7 @@ def get_tag_with_posts_by_slug(db: Session, slug: str) -> TagWithPostsSchema:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Tag not found",
         )
+    _filter_published_posts(tag)
     return TagWithPostsSchema.model_validate(tag)
 
 

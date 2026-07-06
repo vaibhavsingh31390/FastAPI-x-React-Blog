@@ -74,3 +74,28 @@ def test_login_inactive_user(client: TestClient, db_session: Session):
 
     assert response.status_code == 403
     assert response.json()["detail"] == "Account is inactive"
+
+
+def test_get_me(client: TestClient):
+    payload = make_user_payload()
+    register_response = client.post("/api/v1/auth/register", json=payload)
+    token = register_response.json()["access_token"]
+
+    response = client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["email"] == payload["email"]
+
+
+def test_logout_clears_cookie(client: TestClient):
+    payload = make_user_payload()
+    register_response = client.post("/api/v1/auth/register", json=payload)
+    assert register_response.cookies.get("access_token")
+
+    response = client.post("/api/v1/auth/logout")
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Logged out"

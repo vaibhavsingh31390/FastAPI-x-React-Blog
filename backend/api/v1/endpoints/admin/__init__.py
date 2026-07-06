@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
-from api.v1.endpoints.admin import category, tag, user
+from api.v1.endpoints.admin import category, comment, tag, user
 from api.dependencies.auth import get_current_admin
 
-__all__ = ["category", "tag", "user", "routers"]
+__all__ = ["category", "comment", "tag", "user", "routers"]
 
 dependencies = [Depends(get_current_admin)]
 
@@ -10,6 +10,7 @@ routers = [
     user.router,
     category.router,
     tag.router,
+    comment.router,
 ]
 
 def include_routers(parent: APIRouter) -> None:

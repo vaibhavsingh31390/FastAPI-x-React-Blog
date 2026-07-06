@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from tests.test_enpoints.test_post import make_post_payload
+from tests.test_enpoints.test_post import make_post_payload, publish_post
 from tests.test_enpoints.test_user import promote_admin, register_auth
 
 
@@ -112,6 +112,7 @@ def test_get_category_with_posts(client: TestClient, db_session: Session):
         1,
         headers=user_headers,
     )
+    publish_post(client, post["id"], headers=user_headers)
 
     response = client.get(f"/api/v1/categories/{category['id']}/posts")
 
@@ -132,6 +133,7 @@ def test_get_category_with_posts_by_slug(client: TestClient, db_session: Session
         1,
         headers=user_headers,
     )
+    publish_post(client, post["id"], headers=user_headers)
 
     response = client.get(f"/api/v1/categories/slug/{category['slug']}/posts")
 

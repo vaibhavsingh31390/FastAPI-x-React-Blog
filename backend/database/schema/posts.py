@@ -3,11 +3,20 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from database.models.post import ContentMode, PostStatus, PostType
-from database.schema.content_blocks import parse_blocks_content
+from database.schema.content_components import parse_components_content
 from database.schema.users import UserPublicSchema
 
 
-class PostBase(BaseModel):
+class PostSeoSchema(BaseModel):
+    meta_title: str | None = Field(default=None, max_length=70)
+    meta_description: str | None = Field(default=None, max_length=160)
+    canonical_url: str | None = Field(default=None, max_length=255)
+    robots: str | None = Field(default=None, max_length=50)
+    og_image_url: str | None = Field(default=None, max_length=255)
+    focus_keyword: str | None = Field(default=None, max_length=100)
+
+
+class PostBase(PostSeoSchema):
     slug: str = Field(..., min_length=1, max_length=100)
     title: str = Field(..., min_length=1, max_length=100)
     excerpt: str | None = Field(default=None, max_length=500)
@@ -21,8 +30,8 @@ class PostBase(BaseModel):
 
     @model_validator(mode="after")
     def validate_content_for_mode(self) -> "PostBase":
-        if self.content_mode == ContentMode.blocks:
-            parse_blocks_content(self.content)
+        if self.content_mode == ContentMode.components:
+            parse_components_content(self.content)
         return self
 
 
@@ -44,11 +53,17 @@ class PostUpdate(BaseModel):
     published_at: datetime | None = None
     category_id: int | None = Field(default=None, gt=0)
     tag_ids: list[int] | None = None
+    meta_title: str | None = Field(default=None, max_length=70)
+    meta_description: str | None = Field(default=None, max_length=160)
+    canonical_url: str | None = Field(default=None, max_length=255)
+    robots: str | None = Field(default=None, max_length=50)
+    og_image_url: str | None = Field(default=None, max_length=255)
+    focus_keyword: str | None = Field(default=None, max_length=100)
 
     @model_validator(mode="after")
     def validate_content_for_mode(self) -> "PostUpdate":
-        if self.content is not None and self.content_mode == ContentMode.blocks:
-            parse_blocks_content(self.content)
+        if self.content is not None and self.content_mode == ContentMode.components:
+            parse_components_content(self.content)
         return self
 
 
@@ -102,3 +117,9 @@ class PostDetailSchema(PostWithAuthorSchema):
     category: PostCategorySchema | None = None
     tags: list[PostTagSchema] = Field(default_factory=list)
     comments: list[PostCommentSummarySchema] = Field(default_factory=list)
+
+
+class CommentCreatePayload(BaseModel):
+    parent_id: int | None = Field(default=None, gt=0)
+    author_name: str | None = Field(default=None, min_length=1, max_length=100)
+    body: str = Field(..., min_length=1)

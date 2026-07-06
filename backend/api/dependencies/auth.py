@@ -59,6 +59,30 @@ def get_current_user(
     return user
 
 
+def get_current_user_optional(
+    bearer_token: str | None = Depends(oauth2_scheme),
+    access_token: str | None = Cookie(default=None),
+    db: Session = Depends(get_db),
+) -> User | None:
+    token = bearer_token or access_token
+    if not token:
+        return None
+
+    payload = verify_jwt(token)
+    if payload is None:
+        return None
+
+    user_id = payload.get("sub")
+    if user_id is None:
+        return None
+
+    user = user_repo.get_by_id(db, int(user_id))
+    if user is None or not user.is_active:
+        return None
+
+    return user
+
+
 def get_current_admin(
     current_user: User = Depends(get_current_user),
 ) -> User:
