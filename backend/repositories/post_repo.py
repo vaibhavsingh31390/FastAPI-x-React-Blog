@@ -76,15 +76,18 @@ def get_by_slug(
     return query.filter(Post.slug == slug).first()
 
 
-def create(db: Session, post_in: PostCreate) -> Post:
+def create(db: Session, post_in: PostCreate, *, rendered_content: str) -> Post:
     db_post = Post(
         author_id=post_in.author_id,
         slug=post_in.slug,
         title=post_in.title,
         excerpt=post_in.excerpt,
         content=post_in.content,
+        content_mode=post_in.content_mode,
+        rendered_content=rendered_content,
         cover_image_url=post_in.cover_image_url,
         status=post_in.status,
+        post_type=post_in.post_type,
         published_at=post_in.published_at,
         category_id=post_in.category_id,
     )
@@ -96,12 +99,21 @@ def create(db: Session, post_in: PostCreate) -> Post:
     return db_post
 
 
-def update(db: Session, db_post: Post, post_in: PostUpdate) -> Post:
+def update(
+    db: Session,
+    db_post: Post,
+    post_in: PostUpdate,
+    *,
+    rendered_content: str | None = None,
+) -> Post:
     update_data = post_in.model_dump(exclude_unset=True)
     tag_ids = update_data.pop("tag_ids", None)
 
     for field, value in update_data.items():
         setattr(db_post, field, value)
+
+    if rendered_content is not None:
+        db_post.rendered_content = rendered_content
 
     if tag_ids is not None:
         db_post.tags = _get_tags_by_ids(db, tag_ids)

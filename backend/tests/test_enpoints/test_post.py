@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from tests.test_enpoints.test_user import create_user, register_auth
+from tests.test_enpoints.test_user import register_auth
 
 
 def make_post_payload(user_id: int, index: int = 1) -> dict:
@@ -8,9 +8,10 @@ def make_post_payload(user_id: int, index: int = 1) -> dict:
         "slug": f"post-test-{index}",
         "title": f"Test Post {index}",
         "excerpt": "Created from the test.",
-        "content": "This is a sample blog post body created from the test suite.",
+        "content": f"Sample post content {index}.",
         "cover_image_url": "https://example.com/covers/test-cover.jpg",
         "status": "draft",
+        "post_type": "post",
         "published_at": None,
         "category_id": None,
         "author_id": user_id,
@@ -44,7 +45,10 @@ def test_create_post(client: TestClient):
     )
 
     assert response.status_code == 201
-    assert response.json()["author_id"] == user["id"]
+    data = response.json()
+    assert data["author_id"] == user["id"]
+    assert data["content_mode"] == "html"
+    assert data["post_type"] == "post"
 
 
 def test_create_post_without_slug_uses_title(client: TestClient):
@@ -56,6 +60,18 @@ def test_create_post_without_slug_uses_title(client: TestClient):
 
     assert response.status_code == 201
     assert response.json()["slug"] == "test-post-1"
+
+
+def test_create_post_with_page_type(client: TestClient):
+    user, headers = register_auth(client, 1)
+    payload = make_post_payload(user_id=user["id"], index=1)
+    payload["post_type"] = "page"
+    payload["slug"] = "about-page"
+
+    response = client.post("/api/v1/posts/", json=payload, headers=headers)
+
+    assert response.status_code == 201
+    assert response.json()["post_type"] == "page"
 
 
 def test_list_posts(client: TestClient):
@@ -127,7 +143,9 @@ def test_update_post(client: TestClient):
     )
 
     assert response.status_code == 200
-    assert response.json()["title"] == payload["title"]
+    data = response.json()
+    assert data["title"] == payload["title"]
+    assert data["status"] == "published"
 
 
 def test_delete_post(client: TestClient):

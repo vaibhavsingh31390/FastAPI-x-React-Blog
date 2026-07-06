@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "7e8f8a3e-6cdb-4bc0-ae7c-4cc8d83d6a2d",
     "name": "FastAPI x React Blog API",
-    "description": "Postman collection for the FastAPI backend. Run Register User or Login User first — the test script saves `accessToken` for protected routes. Run Login Admin User for admin routes (`adminAccessToken`). Public read routes need no auth.",
+    "description": "Postman collection for the FastAPI backend.\n\nAuth flow:\n1. Register User or Login User → saves `accessToken` and `regularUserId`\n2. Login Admin User → saves `adminAccessToken` (set `adminEmail` first)\n\nProtected routes need `accessToken`. Admin routes need `adminAccessToken`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -108,6 +108,7 @@
                   "}",
                   "if (data.user && data.user.id) {",
                   "  pm.collectionVariables.set('createdUserId', String(data.user.id));",
+                  "  pm.collectionVariables.set('regularUserId', String(data.user.id));",
                   "}"
                 ]
               }
@@ -491,7 +492,41 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Hello From Postman\",\n  \"excerpt\": \"Created from the Postman collection.\",\n  \"content\": \"This is a sample blog post body created from the Postman collection.\",\n  \"cover_image_url\": \"https://example.com/covers/postman-cover.jpg\",\n  \"status\": \"draft\",\n  \"published_at\": null,\n  \"category_id\": null,\n  \"author_id\": {{regularUserId}},\n  \"tag_ids\": []\n}",
+              "raw": "{\n  \"title\": \"Hello From Postman\",\n  \"excerpt\": \"Created from the Postman collection.\",\n  \"content\": \"<p>This is a sample blog post body created from the Postman collection.</p>\",\n  \"content_mode\": \"html\",\n  \"cover_image_url\": \"https://example.com/covers/postman-cover.jpg\",\n  \"status\": \"draft\",\n  \"post_type\": \"post\",\n  \"published_at\": null,\n  \"category_id\": null,\n  \"author_id\": {{regularUserId}},\n  \"tag_ids\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/{{apiPrefix}}/posts/",
+            "description": "Creates a post. Saves `postId` and `postSlug`."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Page As User 1",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"about-page-{{$timestamp}}\",\n  \"title\": \"About Page\",\n  \"excerpt\": \"Static about page from Postman.\",\n  \"content\": \"<h1>About</h1><p>About page content from Postman.</p>\",\n  \"content_mode\": \"html\",\n  \"status\": \"published\",\n  \"post_type\": \"page\",\n  \"published_at\": null,\n  \"category_id\": null,\n  \"author_id\": {{regularUserId}},\n  \"tag_ids\": []\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -524,7 +559,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Hello From Postman (Updated)\",\n  \"excerpt\": \"Updated from the Postman collection.\",\n  \"content\": \"Updated blog post content from Postman.\",\n  \"status\": \"published\",\n  \"published_at\": \"2026-07-06T12:00:00Z\",\n  \"tag_ids\": []\n}",
+              "raw": "{\n  \"title\": \"Hello From Postman (Updated)\",\n  \"excerpt\": \"Updated from the Postman collection.\",\n  \"status\": \"published\",\n  \"published_at\": \"2026-07-06T12:00:00Z\",\n  \"tag_ids\": []\n}",
               "options": {
                 "raw": {
                   "language": "json"

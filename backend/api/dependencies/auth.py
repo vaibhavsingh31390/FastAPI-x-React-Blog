@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Cookie, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
@@ -7,11 +7,29 @@ from database.models.users import User
 from repositories import user_repo
 from utils.auth_utils import verify_jwt
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/auth/login",
+    auto_error=False,
+)
+
+
+def get_token(
+    bearer_token: str | None = Depends(oauth2_scheme),
+    access_token: str | None = Cookie(default=None),
+) -> str:
+    if bearer_token:
+        return bearer_token
+    if access_token:
+        return access_token
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Not authenticated",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    token: str = Depends(get_token),
     db: Session = Depends(get_db),
 ) -> User:
     credentials_error = HTTPException(

@@ -66,6 +66,7 @@ class UserPostSummarySchema(BaseModel):
     id: int
     slug: str
     title: str
+    post_type: str
     excerpt: str | None = None
     published_at: datetime | None = None
 

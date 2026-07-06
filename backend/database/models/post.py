@@ -21,6 +21,17 @@ class PostStatus(str, enum.Enum):
     archived = "archived"
 
 
+class PostType(str, enum.Enum):
+    post = "post"
+    page = "page"
+
+
+class ContentMode(str, enum.Enum):
+    markdown = "markdown"
+    html = "html"
+    blocks = "blocks"
+
+
 # Pivot table for posts <-> tags. Defined here; tag model imports it.
 post_tags = Table(
     "post_tags",
@@ -51,9 +62,18 @@ class Post(Base):
     title = Column(String(100), nullable=False)
     excerpt = Column(String(500), nullable=True)
     content = Column(Text, nullable=False)
+    content_mode = Column(
+        Enum(ContentMode, name="contentmode"),
+        nullable=False,
+        default=ContentMode.html,
+    )
+    rendered_content = Column(Text, nullable=True)
     cover_image_url = Column(String(255), nullable=True)
     status = Column(
         Enum(PostStatus, name="poststatus"), nullable=False, default=PostStatus.draft
+    )
+    post_type = Column(
+        Enum(PostType, name="posttype"), nullable=False, default=PostType.post
     )
     published_at = Column(DateTime(timezone=True), nullable=True)
     meta_title = Column(String(70), nullable=True)

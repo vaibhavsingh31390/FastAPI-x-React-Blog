@@ -1,8 +1,9 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from database.models.post import PostStatus
+from database.models.post import ContentMode, PostStatus, PostType
+from database.schema.content_blocks import parse_blocks_content
 from database.schema.users import UserPublicSchema
 
 
@@ -11,30 +12,24 @@ class PostBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=100)
     excerpt: str | None = Field(default=None, max_length=500)
     content: str = Field(..., min_length=1)
+    content_mode: ContentMode = ContentMode.html
     cover_image_url: str | None = Field(default=None, max_length=255)
     status: PostStatus = PostStatus.draft
+    post_type: PostType = PostType.post
     published_at: datetime | None = None
-    # TODO: category_id should be validated and authorized before persisting.
-    category_id: int | None = Field(
-        default=None,
-        gt=0,
-        description="Should be validated and authorized before persisting.",
-    )
+    category_id: int | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def validate_content_for_mode(self) -> "PostBase":
+        if self.content_mode == ContentMode.blocks:
+            parse_blocks_content(self.content)
+        return self
 
 
 class PostCreate(PostBase):
     slug: str | None = Field(default=None, min_length=1, max_length=100)
-    # TODO: author_id should be added via auth middleware in the future.
-    author_id: int = Field(
-        ...,
-        gt=0,
-        description="Should be added via auth middleware.",
-    )
-    # TODO: tag_ids should be validated and authorized before persisting.
-    tag_ids: list[int] = Field(
-        default_factory=list,
-        description="Should be validated and authorized before persisting.",
-    )
+    author_id: int = Field(..., gt=0)
+    tag_ids: list[int] = Field(default_factory=list)
 
 
 class PostUpdate(BaseModel):
@@ -42,20 +37,19 @@ class PostUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=100)
     excerpt: str | None = Field(default=None, max_length=500)
     content: str | None = Field(default=None, min_length=1)
+    content_mode: ContentMode | None = None
     cover_image_url: str | None = Field(default=None, max_length=255)
     status: PostStatus | None = None
+    post_type: PostType | None = None
     published_at: datetime | None = None
-    # TODO: category_id should be validated and authorized before persisting.
-    category_id: int | None = Field(
-        default=None,
-        gt=0,
-        description="Should be validated and authorized before persisting.",
-    )
-    # TODO: tag_ids should be validated and authorized before persisting.
-    tag_ids: list[int] | None = Field(
-        default=None,
-        description="Should be validated and authorized before persisting.",
-    )
+    category_id: int | None = Field(default=None, gt=0)
+    tag_ids: list[int] | None = None
+
+    @model_validator(mode="after")
+    def validate_content_for_mode(self) -> "PostUpdate":
+        if self.content is not None and self.content_mode == ContentMode.blocks:
+            parse_blocks_content(self.content)
+        return self
 
 
 class PostSchema(PostBase):
@@ -63,6 +57,7 @@ class PostSchema(PostBase):
 
     id: int
     author_id: int
+    rendered_content: str | None = None
     created_at: datetime
     updated_at: datetime
 

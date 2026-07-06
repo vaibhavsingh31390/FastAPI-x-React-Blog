@@ -15,6 +15,7 @@ def test_register_user(client: TestClient):
     assert data["access_token"]
     assert data["token_type"] == "bearer"
     assert data["user"]["email"] == payload["email"]
+    assert response.cookies.get("access_token") == data["access_token"]
 
 
 def test_register_duplicate_email(client: TestClient):
@@ -40,6 +41,7 @@ def test_login_user(client: TestClient):
     data = response.json()
     assert data["access_token"]
     assert data["user"]["email"] == payload["email"]
+    assert response.cookies.get("access_token") == data["access_token"]
 
 
 def test_login_invalid_credentials(client: TestClient):

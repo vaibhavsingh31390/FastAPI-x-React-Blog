@@ -3,10 +3,42 @@ from typing import Literal
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from database.models.post import Post
+from config.main_settings import SETTINGS
+from database.models.post import ContentMode, Post
+from database.schema.content_blocks import parse_blocks_content
 from database.schema.posts import PostCreate, PostDetailSchema, PostUpdate
 from repositories import category_repo, post_repo, tag_repo, user_repo
+from utils.content_renderer import render_post_content
 from utils.slug_utils import normalize_slug
+
+
+def _validate_blocks_content(content: str) -> None:
+    try:
+        parse_blocks_content(content)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+def _render_content(content_mode: ContentMode, content: str) -> str:
+    try:
+        return render_post_content(
+            content_mode,
+            content,
+            use_node_ssr=SETTINGS.USE_NODE_SSR,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
 
 
 def _get_post_or_404(db: Session, post_id: int) -> Post:
@@ -120,7 +152,14 @@ def create_post(db: Session, payload: PostCreate) -> Post:
             detail="Post slug already exists",
         )
 
-    return post_repo.create(db, normalized_payload)
+    return post_repo.create(
+        db,
+        normalized_payload,
+        rendered_content=_render_content(
+            normalized_payload.content_mode,
+            normalized_payload.content,
+        ),
+    )
 
 
 def update_post(db: Session, post_id: int, payload: PostUpdate) -> Post:
@@ -147,7 +186,30 @@ def update_post(db: Session, post_id: int, payload: PostUpdate) -> Post:
                 detail="Post slug already exists",
             )
 
-    return post_repo.update(db, db_post, update_payload)
+    effective_mode = (
+        update_payload.content_mode
+        if update_payload.content_mode is not None
+        else db_post.content_mode
+    )
+    effective_content = (
+        update_payload.content
+        if update_payload.content is not None
+        else db_post.content
+    )
+
+    if update_payload.content is not None and effective_mode == ContentMode.blocks:
+        _validate_blocks_content(update_payload.content)
+
+    rendered_content = None
+    if update_payload.content is not None or update_payload.content_mode is not None:
+        rendered_content = _render_content(effective_mode, effective_content)
+
+    return post_repo.update(
+        db,
+        db_post,
+        update_payload,
+        rendered_content=rendered_content,
+    )
 
 
 def delete_post(db: Session, post_id: int) -> Post:

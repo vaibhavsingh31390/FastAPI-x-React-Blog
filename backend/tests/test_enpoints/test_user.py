@@ -84,6 +84,21 @@ def test_get_user_with_posts(client: TestClient):
     assert response.json()["posts"] == []
 
 
+def test_get_user_with_posts_includes_post_fields(client: TestClient):
+    from tests.test_enpoints.test_post import create_post
+
+    user, headers = register_auth(client, 1)
+    create_post(client, user["id"], 1, headers=headers)
+
+    response = client.get(f"/api/v1/users/{user['id']}/posts", headers=headers)
+
+    assert response.status_code == 200
+    posts = response.json()["posts"]
+    assert len(posts) == 1
+    assert posts[0]["post_type"] == "post"
+    assert posts[0]["slug"] == "post-test-1"
+
+
 def test_get_user_with_comments(client: TestClient):
     user, headers = register_auth(client, 1)
 
