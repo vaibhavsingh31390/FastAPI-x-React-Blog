@@ -297,14 +297,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"slug\": \"post-{{$timestamp}}\",\n  \"title\": \"Hello From Postman\",\n  \"excerpt\": \"Created from the Postman collection.\",\n  \"content\": \"This is a sample blog post body created from the Postman collection.\",\n  \"cover_image_url\": \"https://example.com/covers/postman-cover.jpg\",\n  \"status\": \"draft\",\n  \"published_at\": null,\n  \"category_id\": null,\n  \"tag_ids\": []\n}",
+              "raw": "{\n  \"slug\": \"post-{{$timestamp}}\",\n  \"title\": \"Hello From Postman\",\n  \"excerpt\": \"Created from the Postman collection.\",\n  \"content\": \"This is a sample blog post body created from the Postman collection.\",\n  \"cover_image_url\": \"https://example.com/covers/postman-cover.jpg\",\n  \"status\": \"draft\",\n  \"published_at\": null,\n  \"category_id\": null,\n  \"author_id\": {{regularUserId}},\n  \"tag_ids\": []\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "url": "{{baseUrl}}/{{apiPrefix}}/posts/?author_id={{regularUserId}}"
+            "url": "{{baseUrl}}/{{apiPrefix}}/posts/"
           },
           "response": []
         },

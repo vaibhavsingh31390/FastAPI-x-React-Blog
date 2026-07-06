@@ -14,10 +14,15 @@ class PostBase(BaseModel):
     cover_image_url: str | None = Field(default=None, max_length=255)
     status: PostStatus = PostStatus.draft
     published_at: datetime | None = None
+    # TODO: category_id should be validated and authorized before persisting.
     category_id: int | None = Field(default=None, gt=0)
 
 
 class PostCreate(PostBase):
+    slug: str | None = Field(default=None, min_length=1, max_length=100)
+    # TODO: author_id should be added via auth middleware in the future.
+    author_id: int = Field(..., gt=0, description="Should be added via auth middleware.")
+    # TODO: tag_ids should be validated and authorized before persisting.
     tag_ids: list[int] = Field(default_factory=list)
 
 
@@ -29,7 +34,9 @@ class PostUpdate(BaseModel):
     cover_image_url: str | None = Field(default=None, max_length=255)
     status: PostStatus | None = None
     published_at: datetime | None = None
+    # TODO: category_id should be validated and authorized before persisting.
     category_id: int | None = Field(default=None, gt=0)
+    # TODO: tag_ids should be validated and authorized before persisting.
     tag_ids: list[int] | None = None
 
 

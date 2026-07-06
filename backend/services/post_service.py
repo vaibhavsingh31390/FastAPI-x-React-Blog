@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from database.models.post import Post
 from database.schema.posts import PostCreate, PostDetailSchema, PostUpdate
-from repositories import post_repo, user_repo
+from repositories import category_repo, post_repo, tag_repo, user_repo
 from utils.slug_utils import normalize_slug
 
 
@@ -17,6 +17,31 @@ def _get_post_or_404(db: Session, post_id: int) -> Post:
             detail="Post not found",
         )
     return post
+
+
+def _validate_post_relations(
+    db: Session,
+    *,
+    category_id: int | None,
+    tag_ids: list[int] | None,
+) -> None:
+    if category_id is not None and category_repo.get_by_id(db, category_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Category not found",
+        )
+
+    if tag_ids is None:
+        return
+
+    missing_tag_ids = [
+        tag_id for tag_id in dict.fromkeys(tag_ids) if tag_repo.get_by_id(db, tag_id) is None
+    ]
+    if missing_tag_ids:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tag not found: {missing_tag_ids[0]}",
+        )
 
 
 def list_posts(
@@ -69,16 +94,22 @@ def get_post_detail_by_slug(db: Session, slug: str) -> PostDetailSchema:
     return PostDetailSchema.model_validate(post)
 
 
-def create_post(db: Session, author_id: int, payload: PostCreate) -> Post:
+def create_post(db: Session, payload: PostCreate) -> Post:
     normalized_payload = payload.model_copy(
-        update={"slug": normalize_slug(payload.slug)}
+        update={"slug": normalize_slug(payload.slug or payload.title)}
     )
 
-    if user_repo.get_by_id(db, author_id) is None:
+    if user_repo.get_by_id(db, normalized_payload.author_id) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Author not found",
         )
+
+    _validate_post_relations(
+        db,
+        category_id=normalized_payload.category_id,
+        tag_ids=normalized_payload.tag_ids,
+    )
 
     if (
         post_repo.get_by_slug(db, normalized_payload.slug, include_deleted=True)
@@ -89,12 +120,18 @@ def create_post(db: Session, author_id: int, payload: PostCreate) -> Post:
             detail="Post slug already exists",
         )
 
-    return post_repo.create(db, author_id, normalized_payload)
+    return post_repo.create(db, normalized_payload)
 
 
 def update_post(db: Session, post_id: int, payload: PostUpdate) -> Post:
     db_post = _get_post_or_404(db, post_id)
     update_payload = payload
+
+    _validate_post_relations(
+        db,
+        category_id=payload.category_id,
+        tag_ids=payload.tag_ids,
+    )
 
     if payload.slug is not None:
         normalized_slug = normalize_slug(payload.slug)

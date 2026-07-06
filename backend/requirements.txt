@@ -2,7 +2,7 @@ fastapi
 uvicorn
 pydantic[email]
 pytest
-httpx
+httpx2
 sqlalchemy
 psycopg2-binary
 python-dotenv

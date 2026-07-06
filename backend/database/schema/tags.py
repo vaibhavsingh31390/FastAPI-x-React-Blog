@@ -9,7 +9,7 @@ class TagBase(BaseModel):
 
 
 class TagCreate(TagBase):
-    pass
+    slug: str | None = Field(default=None, min_length=1, max_length=100)
 
 
 class TagUpdate(BaseModel):

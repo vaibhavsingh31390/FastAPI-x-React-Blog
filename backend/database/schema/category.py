@@ -10,7 +10,7 @@ class CategoryBase(BaseModel):
 
 
 class CategoryCreate(CategoryBase):
-    pass
+    slug: str | None = Field(default=None, min_length=1, max_length=100)
 
 
 class CategoryUpdate(BaseModel):

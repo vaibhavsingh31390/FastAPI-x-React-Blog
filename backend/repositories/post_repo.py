@@ -76,9 +76,9 @@ def get_by_slug(
     return query.filter(Post.slug == slug).first()
 
 
-def create(db: Session, author_id: int, post_in: PostCreate) -> Post:
+def create(db: Session, post_in: PostCreate) -> Post:
     db_post = Post(
-        author_id=author_id,
+        author_id=post_in.author_id,
         slug=post_in.slug,
         title=post_in.title,
         excerpt=post_in.excerpt,

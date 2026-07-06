@@ -48,15 +48,11 @@ def get_post_detail_by_slug(slug: str, db: Session = Depends(get_db)):
     return post_service.get_post_detail_by_slug(db, slug)
 
 
-# TODO: Protect this route with auth middleware and derive `author_id`
-# from the authenticated user instead of accepting it from the request.
+# TODO: Protect this route with auth middleware and set `payload.author_id`
+# from the authenticated user instead of trusting the request body.
 @router.post("/", response_model=PostSchema, status_code=status.HTTP_201_CREATED)
-def create_post(
-    payload: PostCreate,
-    author_id: int = Query(..., gt=0),
-    db: Session = Depends(get_db),
-):
-    return post_service.create_post(db, author_id, payload)
+def create_post(payload: PostCreate, db: Session = Depends(get_db)):
+    return post_service.create_post(db, payload)
 
 
 # TODO: Protect this route with auth middleware and verify the caller

@@ -64,7 +64,9 @@ def get_tag_with_posts_by_slug(db: Session, slug: str) -> TagWithPostsSchema:
 
 
 def create_tag(db: Session, payload: TagCreate) -> Tag:
-    normalized_payload = payload.model_copy(update={"slug": normalize_slug(payload.slug)})
+    normalized_payload = payload.model_copy(
+        update={"slug": normalize_slug(payload.slug or payload.name)}
+    )
 
     if tag_repo.get_by_slug(db, normalized_payload.slug) is not None:
         raise HTTPException(

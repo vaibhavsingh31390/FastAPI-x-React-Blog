@@ -72,7 +72,7 @@ def get_category_with_posts_by_slug(
 
 def create_category(db: Session, payload: CategoryCreate) -> Category:
     normalized_payload = payload.model_copy(
-        update={"slug": normalize_slug(payload.slug)}
+        update={"slug": normalize_slug(payload.slug or payload.name)}
     )
 
     if category_repo.get_by_slug(db, normalized_payload.slug) is not None:
