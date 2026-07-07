@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from database.models.category import Category
+from database.models.post import PostStatus
 from database.schema.category import (
     CategoryCreate,
     CategoryUpdate,
@@ -11,6 +12,14 @@ from database.schema.category import (
 )
 from repositories import category_repo
 from utils.slug_utils import normalize_slug
+
+
+def _filter_published_posts(category: Category) -> None:
+    category.posts = [
+        post
+        for post in category.posts
+        if post.deleted_at is None and post.status == PostStatus.published
+    ]
 
 
 def _get_category_or_404(db: Session, category_id: int) -> Category:
@@ -54,6 +63,7 @@ def get_category_with_posts(db: Session, category_id: int) -> CategoryWithPostsS
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Category not found",
         )
+    _filter_published_posts(category)
     return CategoryWithPostsSchema.model_validate(category)
 
 
@@ -67,6 +77,7 @@ def get_category_with_posts_by_slug(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Category not found",
         )
+    _filter_published_posts(category)
     return CategoryWithPostsSchema.model_validate(category)
 
 

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "7e8f8a3e-6cdb-4bc0-ae7c-4cc8d83d6a2d",
     "name": "FastAPI x React Blog API",
-    "description": "Postman collection for the current FastAPI backend. Assumptions baked into the variables: user id 1 already exists and is a regular user, user id 2 already exists and is an admin. Categories and tags are implemented as separate taxonomy resources, which is the cleaner and more standard fit for this codebase.",
+    "description": "Postman collection for the FastAPI backend.\n\nAuth flow:\n1. Register User or Login User → saves `accessToken` and `regularUserId`\n2. Login Admin User → saves `adminAccessToken` (set `adminEmail` first)\n\nProtected routes need `accessToken`. Admin routes need `adminAccessToken`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -60,6 +60,21 @@
       "key": "tagSlug",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminAccessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@example.com",
+      "type": "string"
     }
   ],
   "item": [
@@ -77,7 +92,7 @@
       ]
     },
     {
-      "name": "Users",
+      "name": "Auth",
       "item": [
         {
           "name": "Register User",
@@ -88,8 +103,12 @@
                 "type": "text/javascript",
                 "exec": [
                   "const data = pm.response.json();",
-                  "if (data.id) {",
-                  "  pm.collectionVariables.set('createdUserId', String(data.id));",
+                  "if (data.access_token) {",
+                  "  pm.collectionVariables.set('accessToken', data.access_token);",
+                  "}",
+                  "if (data.user && data.user.id) {",
+                  "  pm.collectionVariables.set('createdUserId', String(data.user.id));",
+                  "  pm.collectionVariables.set('regularUserId', String(data.user.id));",
                   "}"
                 ]
               }
@@ -112,13 +131,109 @@
                 }
               }
             },
-            "url": "{{baseUrl}}/{{apiPrefix}}/users/"
+            "url": "{{baseUrl}}/{{apiPrefix}}/auth/register"
           },
           "response": []
         },
         {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.access_token) {",
+                  "  pm.collectionVariables.set('accessToken', data.access_token);",
+                  "}",
+                  "if (data.user && data.user.id) {",
+                  "  pm.collectionVariables.set('regularUserId', String(data.user.id));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"postman-user@example.com\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/{{apiPrefix}}/auth/login"
+          },
+          "response": []
+        },
+        {
+          "name": "Login Admin User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.access_token) {",
+                  "  pm.collectionVariables.set('adminAccessToken', data.access_token);",
+                  "}",
+                  "if (data.user && data.user.id) {",
+                  "  pm.collectionVariables.set('adminUserId', String(data.user.id));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/{{apiPrefix}}/auth/login",
+            "description": "Set `adminEmail` to an admin account before running. Saves `adminAccessToken` for admin routes."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
           "name": "List Users",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "url": "{{baseUrl}}/{{apiPrefix}}/users/?skip=0&limit=100&sort=desc"
           },
@@ -127,6 +242,16 @@
         {
           "name": "Get User 1",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "url": "{{baseUrl}}/{{apiPrefix}}/users/{{regularUserId}}"
           },
@@ -143,6 +268,16 @@
         {
           "name": "Get User 1 Posts",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "url": "{{baseUrl}}/{{apiPrefix}}/users/{{regularUserId}}/posts"
           },
@@ -151,6 +286,16 @@
         {
           "name": "Get User 1 Comments",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "url": "{{baseUrl}}/{{apiPrefix}}/users/{{regularUserId}}/comments"
           },
@@ -159,6 +304,16 @@
         {
           "name": "Get User 1 Detail",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "url": "{{baseUrl}}/{{apiPrefix}}/users/{{regularUserId}}/detail"
           },
@@ -167,6 +322,16 @@
         {
           "name": "Update User 1",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "PATCH",
             "header": [
               {
@@ -190,6 +355,16 @@
         {
           "name": "Admin Update User 1 Flags",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "PATCH",
             "header": [
               {
@@ -213,6 +388,16 @@
         {
           "name": "Delete Created User",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "DELETE",
             "description": "Run Register User first so `createdUserId` is populated, or set it manually before sending this request.",
             "url": "{{baseUrl}}/{{apiPrefix}}/users/{{createdUserId}}"
@@ -288,6 +473,16 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
             "header": [
               {
@@ -297,7 +492,41 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"slug\": \"post-{{$timestamp}}\",\n  \"title\": \"Hello From Postman\",\n  \"excerpt\": \"Created from the Postman collection.\",\n  \"content\": \"This is a sample blog post body created from the Postman collection.\",\n  \"cover_image_url\": \"https://example.com/covers/postman-cover.jpg\",\n  \"status\": \"draft\",\n  \"published_at\": null,\n  \"category_id\": null,\n  \"author_id\": {{regularUserId}},\n  \"tag_ids\": []\n}",
+              "raw": "{\n  \"title\": \"Hello From Postman\",\n  \"excerpt\": \"Created from the Postman collection.\",\n  \"content\": \"<p>This is a sample blog post body created from the Postman collection.</p>\",\n  \"content_mode\": \"html\",\n  \"cover_image_url\": \"https://example.com/covers/postman-cover.jpg\",\n  \"status\": \"draft\",\n  \"post_type\": \"post\",\n  \"published_at\": null,\n  \"category_id\": null,\n  \"author_id\": {{regularUserId}},\n  \"tag_ids\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/{{apiPrefix}}/posts/",
+            "description": "Creates a post. Saves `postId` and `postSlug`."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Page As User 1",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"about-page-{{$timestamp}}\",\n  \"title\": \"About Page\",\n  \"excerpt\": \"Static about page from Postman.\",\n  \"content\": \"<h1>About</h1><p>About page content from Postman.</p>\",\n  \"content_mode\": \"html\",\n  \"status\": \"published\",\n  \"post_type\": \"page\",\n  \"published_at\": null,\n  \"category_id\": null,\n  \"author_id\": {{regularUserId}},\n  \"tag_ids\": []\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -311,6 +540,16 @@
         {
           "name": "Update Post",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "PATCH",
             "header": [
               {
@@ -320,7 +559,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Hello From Postman (Updated)\",\n  \"excerpt\": \"Updated from the Postman collection.\",\n  \"content\": \"Updated blog post content from Postman.\",\n  \"status\": \"published\",\n  \"published_at\": \"2026-07-06T12:00:00Z\",\n  \"tag_ids\": []\n}",
+              "raw": "{\n  \"title\": \"Hello From Postman (Updated)\",\n  \"excerpt\": \"Updated from the Postman collection.\",\n  \"status\": \"published\",\n  \"published_at\": \"2026-07-06T12:00:00Z\",\n  \"tag_ids\": []\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -334,6 +573,16 @@
         {
           "name": "Delete Post",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "DELETE",
             "description": "Uses `postId`. Create a post first if you want a safe disposable target for this request.",
             "url": "{{baseUrl}}/{{apiPrefix}}/posts/{{postId}}"
@@ -365,6 +614,16 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
             "header": [
               {
@@ -374,7 +633,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"slug\": \"category-{{$timestamp}}\",\n  \"name\": \"Postman Category\",\n  \"description\": \"Category created from the Postman collection.\"\n}",
+              "raw": "{\n  \"name\": \"Postman Category\",\n  \"description\": \"Category created from the Postman collection.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -432,6 +691,16 @@
         {
           "name": "Update Category",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "PATCH",
             "header": [
               {
@@ -455,6 +724,16 @@
         {
           "name": "Delete Category",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "DELETE",
             "description": "Create a category first if `categoryId` is empty.",
             "url": "{{baseUrl}}/{{apiPrefix}}/categories/{{categoryId}}"
@@ -486,6 +765,16 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
             "header": [
               {
@@ -495,7 +784,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"slug\": \"tag-{{$timestamp}}\",\n  \"name\": \"postman-tag\"\n}",
+              "raw": "{\n  \"name\": \"postman-tag\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -553,6 +842,16 @@
         {
           "name": "Update Tag",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "PATCH",
             "header": [
               {
@@ -576,6 +875,16 @@
         {
           "name": "Delete Tag",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "DELETE",
             "description": "Create a tag first if `tagId` is empty.",
             "url": "{{baseUrl}}/{{apiPrefix}}/tags/{{tagId}}"

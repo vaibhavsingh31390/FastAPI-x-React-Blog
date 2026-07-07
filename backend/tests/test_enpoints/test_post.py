@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from tests.test_enpoints.test_user import create_user
+from tests.test_enpoints.test_user import register_auth
 
 
 def make_post_payload(user_id: int, index: int = 1) -> dict:
@@ -8,9 +8,10 @@ def make_post_payload(user_id: int, index: int = 1) -> dict:
         "slug": f"post-test-{index}",
         "title": f"Test Post {index}",
         "excerpt": "Created from the test.",
-        "content": "This is a sample blog post body created from the test suite.",
+        "content": f"Sample post content {index}.",
         "cover_image_url": "https://example.com/covers/test-cover.jpg",
         "status": "draft",
+        "post_type": "post",
         "published_at": None,
         "category_id": None,
         "author_id": user_id,
@@ -18,59 +19,121 @@ def make_post_payload(user_id: int, index: int = 1) -> dict:
     }
 
 
-def create_post(client: TestClient, user_id: int, index: int = 1) -> dict:
-    response = client.post("/api/v1/posts/", json=make_post_payload(user_id, index))
+def create_post(
+    client: TestClient,
+    user_id: int,
+    index: int = 1,
+    *,
+    headers: dict[str, str],
+) -> dict:
+    response = client.post(
+        "/api/v1/posts/",
+        json=make_post_payload(user_id, index),
+        headers=headers,
+    )
     assert response.status_code == 201
     return response.json()
 
 
+def publish_post(
+    client: TestClient,
+    post_id: int,
+    *,
+    headers: dict[str, str],
+) -> dict:
+    response = client.patch(
+        f"/api/v1/posts/{post_id}",
+        json={"status": "published"},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    return response.json()
+
+
 def test_create_post(client: TestClient):
-    user = create_user(client, 1)
+    user, headers = register_auth(client, 1)
 
     response = client.post(
         "/api/v1/posts/",
         json=make_post_payload(user_id=user["id"], index=1),
+        headers=headers,
     )
 
     assert response.status_code == 201
-    assert response.json()["author_id"] == user["id"]
+    data = response.json()
+    assert data["author_id"] == user["id"]
+    assert data["content_mode"] == "html"
+    assert data["post_type"] == "post"
 
 
 def test_create_post_without_slug_uses_title(client: TestClient):
-    user = create_user(client, 1)
+    user, headers = register_auth(client, 1)
     payload = make_post_payload(user_id=user["id"], index=1)
     payload.pop("slug")
 
-    response = client.post("/api/v1/posts/", json=payload)
+    response = client.post("/api/v1/posts/", json=payload, headers=headers)
 
     assert response.status_code == 201
     assert response.json()["slug"] == "test-post-1"
 
 
-def test_list_posts(client: TestClient):
-    user = create_user(client, 1)
-    create_post(client, user["id"], 1)
-    create_post(client, user["id"], 2)
+def test_create_post_with_page_type(client: TestClient):
+    user, headers = register_auth(client, 1)
+    payload = make_post_payload(user_id=user["id"], index=1)
+    payload["post_type"] = "page"
+    payload["slug"] = "about-page"
+
+    response = client.post("/api/v1/posts/", json=payload, headers=headers)
+
+    assert response.status_code == 201
+    assert response.json()["post_type"] == "page"
+
+
+def test_create_post_with_components_content(client: TestClient):
+    user, headers = register_auth(client, 1)
+    payload = make_post_payload(user_id=user["id"], index=1)
+    payload["content_mode"] = "components"
+    payload["content"] = '[{"name":"Heading","data":{"text":"Hello"}}]'
+
+    response = client.post("/api/v1/posts/", json=payload, headers=headers)
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["content_mode"] == "components"
+    assert data["rendered_content"] is None
+
+
+def test_list_posts_only_includes_published(client: TestClient):
+    user, headers = register_auth(client, 1)
+    draft = create_post(client, user["id"], 1, headers=headers)
+    published = create_post(client, user["id"], 2, headers=headers)
+    publish_post(client, published["id"], headers=headers)
 
     response = client.get("/api/v1/posts/?skip=0&limit=100&sort=desc")
 
     assert response.status_code == 200
-    assert len(response.json()) == 2
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["id"] == published["id"]
+    assert draft["id"] not in {post["id"] for post in data}
 
 
-def test_get_post(client: TestClient):
-    user = create_user(client, 1)
-    post = create_post(client, user["id"], 1)
+def test_get_post_requires_published_status(client: TestClient):
+    user, headers = register_auth(client, 1)
+    post = create_post(client, user["id"], 1, headers=headers)
 
-    response = client.get(f"/api/v1/posts/{post['id']}")
+    draft_response = client.get(f"/api/v1/posts/{post['id']}")
+    publish_post(client, post["id"], headers=headers)
+    published_response = client.get(f"/api/v1/posts/{post['id']}")
 
-    assert response.status_code == 200
-    assert response.json()["id"] == post["id"]
+    assert draft_response.status_code == 404
+    assert published_response.status_code == 200
 
 
 def test_get_post_detail(client: TestClient):
-    user = create_user(client, 1)
-    post = create_post(client, user["id"], 1)
+    user, headers = register_auth(client, 1)
+    post = create_post(client, user["id"], 1, headers=headers)
+    publish_post(client, post["id"], headers=headers)
 
     response = client.get(f"/api/v1/posts/{post['id']}/detail")
 
@@ -81,8 +144,9 @@ def test_get_post_detail(client: TestClient):
 
 
 def test_get_post_by_slug(client: TestClient):
-    user = create_user(client, 1)
-    post = create_post(client, user["id"], 1)
+    user, headers = register_auth(client, 1)
+    post = create_post(client, user["id"], 1, headers=headers)
+    publish_post(client, post["id"], headers=headers)
 
     response = client.get(f"/api/v1/posts/slug/{post['slug']}")
 
@@ -91,8 +155,9 @@ def test_get_post_by_slug(client: TestClient):
 
 
 def test_get_post_detail_by_slug(client: TestClient):
-    user = create_user(client, 1)
-    post = create_post(client, user["id"], 1)
+    user, headers = register_auth(client, 1)
+    post = create_post(client, user["id"], 1, headers=headers)
+    publish_post(client, post["id"], headers=headers)
 
     response = client.get(f"/api/v1/posts/slug/{post['slug']}/detail")
 
@@ -102,24 +167,36 @@ def test_get_post_detail_by_slug(client: TestClient):
 
 
 def test_update_post(client: TestClient):
-    user = create_user(client, 1)
-    post = create_post(client, user["id"], 1)
+    user, headers = register_auth(client, 1)
+    post = create_post(client, user["id"], 1, headers=headers)
     payload = {
         "title": "Updated Post Title",
         "status": "published",
+        "meta_title": "SEO title",
     }
 
-    response = client.patch(f"/api/v1/posts/{post['id']}", json=payload)
+    response = client.patch(
+        f"/api/v1/posts/{post['id']}",
+        json=payload,
+        headers=headers,
+    )
 
     assert response.status_code == 200
-    assert response.json()["title"] == payload["title"]
+    data = response.json()
+    assert data["title"] == payload["title"]
+    assert data["status"] == "published"
+    assert data["meta_title"] == "SEO title"
 
 
 def test_delete_post(client: TestClient):
-    user = create_user(client, 1)
-    post = create_post(client, user["id"], 1)
+    user, headers = register_auth(client, 1)
+    post = create_post(client, user["id"], 1, headers=headers)
+    publish_post(client, post["id"], headers=headers)
 
-    delete_response = client.delete(f"/api/v1/posts/{post['id']}")
+    delete_response = client.delete(
+        f"/api/v1/posts/{post['id']}",
+        headers=headers,
+    )
     get_response = client.get(f"/api/v1/posts/{post['id']}")
 
     assert delete_response.status_code == 200

@@ -16,6 +16,11 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=128)
 
 
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128)
+
+
 class UserUpdate(BaseModel):
     email: EmailStr | None = None
     password: str | None = Field(default=None, min_length=8, max_length=128)
@@ -41,6 +46,12 @@ class UsersSchema(UserBase):
     updated_at: datetime
 
 
+class AuthTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UsersSchema
+
+
 class UserPublicSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -55,6 +66,7 @@ class UserPostSummarySchema(BaseModel):
     id: int
     slug: str
     title: str
+    post_type: str
     excerpt: str | None = None
     published_at: datetime | None = None
 
